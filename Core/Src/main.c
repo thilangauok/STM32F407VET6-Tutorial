@@ -73,8 +73,13 @@ extern uint8_t usb_rx_buffer[64];
 extern uint32_t usb_rx_len;
 extern uint8_t usb_rx_flag;
 
+/*
+ * Data buffer for UART
+ */
+uint8_t u_msg[] = "Hellow world UART\n";
+
 /* USER CODE END 0 */
-uint8_t *data = "Hello World from USB CDC\n";
+uint8_t data[] = "Hello World from USB CDC\n";
 
 /**
   * @brief  The application entry point.
@@ -131,6 +136,12 @@ int main(void)
     MX_USB_HOST_Process();
 
     /*
+     * This is for UART functionality
+     */
+    HAL_UART_Transmit(&huart2, u_msg, strlen(u_msg), 1000);
+    HAL_Delay(1000);
+
+    /*
      *
      * Operate GPIO in STM32F407VET6
      *
@@ -166,9 +177,9 @@ int main(void)
 		   }
     }
 
-    	//Using momentory buttons to toggle LED, reading GPIO
+    	//Using momentory buttons S1 to toggle LED, reading GPIO
     if(!HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_10)){
-
+    		//reading S2 button press event
     	HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_15);
     }
     /* USER CODE BEGIN 3 */
