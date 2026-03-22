@@ -72,8 +72,6 @@ void Error_Handler(void);
 #define P4_GPIOC13_GPIO_Port GPIOC
 #define P4_GPIOC0_Pin GPIO_PIN_0
 #define P4_GPIOC0_GPIO_Port GPIOC
-#define P4_GPIOA0_Pin GPIO_PIN_0
-#define P4_GPIOA0_GPIO_Port GPIOA
 #define P4_GPIOA3_Pin GPIO_PIN_3
 #define P4_GPIOA3_GPIO_Port GPIOA
 #define P4_GPIOA4_Pin GPIO_PIN_4
@@ -140,10 +138,6 @@ void Error_Handler(void);
 #define P4_GPIOE0_GPIO_Port GPIOE
 #define P4_GPIOE1_Pin GPIO_PIN_1
 #define P4_GPIOE1_GPIO_Port GPIOE
-#define M95M04_EEPROM_SPI_CS_PIN    GPIO_PIN_4
-#define M95M04_EEPROM_SPI_CS_PORT   GPIOA
-//Thilanga added them for testing
-
 
 /* USER CODE BEGIN Private defines */
 

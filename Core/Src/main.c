@@ -18,6 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "adc.h"
 #include "can.h"
 #include "crc.h"
 #include "dma.h"
@@ -30,12 +31,11 @@
 #include "usb_device.h"
 #include "usb_host.h"
 #include "gpio.h"
-#include "string.h"
-#include "usbd_cdc_if.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "string.h"
+#include "usbd_cdc_if.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -45,6 +45,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+#define ADC_BUF_SIZE 16
 
 /* USER CODE END PD */
 
@@ -72,14 +73,12 @@ void MX_USB_HOST_Process(void);
 extern uint8_t usb_rx_buffer[64];
 extern uint32_t usb_rx_len;
 extern uint8_t usb_rx_flag;
-
-/*
- * Data buffer for UART
- */
-uint8_t u_msg[] = "Hellow world UART\n";
-
+volatile uint32_t adc_value = 0;
+volatile float adc_voltage_reading = 0;
+volatile long last_adc_time = 0;
+volatile long last_usb_time = 0;
+volatile uint32_t adc_buffer[ADC_BUF_SIZE];
 /* USER CODE END 0 */
-uint8_t data[] = "Hello World from USB CDC\n";
 
 /**
   * @brief  The application entry point.
@@ -89,7 +88,7 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
-
+   //HAL_ADC_Start_IT(&hadc1);
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -104,9 +103,7 @@ int main(void)
   /* Configure the system clock */
   SystemClock_Config();
 
-  /* USER CODE BEGIN SysInit */
 
-  /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
@@ -122,11 +119,12 @@ int main(void)
   MX_FATFS_Init();
   MX_CRC_Init();
   MX_USB_HOST_Init();
-  MX_USB_DEVICE_Init();   // Initialize the USB device stack
   MX_SPI2_Init();
-  /* USER CODE BEGIN 2 */
+  MX_ADC1_Init();
 
-  /* USER CODE END 2 */
+  /* USER CODE BEGIN SysInit */
+   HAL_ADC_Start_DMA(&hadc1, adc_buffer, ADC_BUF_SIZE);
+   /* USER CODE END SysInit */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
@@ -135,56 +133,101 @@ int main(void)
     /* USER CODE END WHILE */
     MX_USB_HOST_Process();
 
-    /*
-     * This is for UART functionality
-     */
-    HAL_UART_Transmit(&huart2, u_msg, strlen(u_msg), 1000);
-    HAL_Delay(1000);
+    /* USER CODE BEGIN 2 */
 
-    /*
-     *
-     * Operate GPIO in STM32F407VET6
-     *
-    HAL_GPIO_WritePin(GPIOE, GPIO_PIN_13, GPIO_PIN_RESET);
-    HAL_GPIO_WritePin(GPIOE, GPIO_PIN_14, GPIO_PIN_RESET);
-    HAL_GPIO_WritePin(GPIOE, GPIO_PIN_15, GPIO_PIN_RESET);
+             //test the function of LED Here
+         	//HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_13);
+         	//HAL_Delay(1000);
+         	//HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_14);
+         	//HAL_Delay(1000);
+         	//HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_15);
+         	//HAL_Delay(1000);
 
-    HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_13);
-    HAL_Delay(1000);
-    HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_14);
-    HAL_Delay(1000);
-    HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_15);
-    HAL_Delay(1000);
-    */
+         	//Turn LED on and OFF
+         	//this code block print message to Serial port, monitor it from serial
+         	//include this  #include "usbd_cdc_if.h"
+         	//init inside main
+         	//reading ADC A0
 
-    	//turn on off LED using  serial command
-    if (usb_rx_flag)
-    {
-		   usb_rx_flag = 0;
+         	//if(HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY) == HAL_OK){
+         		//adc_value = HAL_ADC_GetValue(&hadc1);
+         	//}
 
-		   if (strncmp((char*)usb_rx_buffer, "eat", 3) == 0)
-		   {
-			   //HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
-			   // String found
-			   char *reply = "Yes, you said eat\n";
-			   CDC_Transmit_FS(reply, strlen(reply)); // Send data via USB
+         		//This code block reads ADC voltage and print it to serial
+         	/*
+         	HAL_ADC_Start(&hadc1);
 
-		   }else if(strncmp((char*)usb_rx_buffer, "LED ON", 6) == 0){
-			   HAL_GPIO_WritePin(GPIOE, GPIO_PIN_13, GPIO_PIN_SET);
+         	if (HAL_ADC_PollForConversion(&hadc1, 200) == HAL_OK)
+         	{
+         		adc_value = HAL_ADC_GetValue(&hadc1);
+         	}
+         	HAL_ADC_Stop(&hadc1);
+         	*/
+    		if ((HAL_GetTick() - last_usb_time) > 1000) {
+				uint16_t sum = 0;
+				last_usb_time = HAL_GetTick();
+				for(int i = 0; i < ADC_BUF_SIZE; i++){
+					sum += adc_buffer[i];
+				}
 
-		   }else if(strncmp((char*)usb_rx_buffer, "LED OFF", 7) == 0){
-			   HAL_GPIO_WritePin(GPIOE, GPIO_PIN_13, GPIO_PIN_RESET);
-		   }
-    }
+				adc_value = (float)sum / ADC_BUF_SIZE;
+				adc_voltage_reading = ((float)adc_value / 4095.0) * 3.3f;
 
-    	//Using momentory buttons S1 to toggle LED, reading GPIO
-    if(!HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_10)){
-    		//reading S2 button press event
-    	HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_15);
-    }
+				char adc_reading_m[50];
+				sprintf(adc_reading_m, "ADC: %0.2f V\r\n", adc_voltage_reading);
+				//sprintf(adc_reading_m, "ADC: %d V\r\n", adc_value);
+				CDC_Transmit_FS((uint8_t*)adc_reading_m, strlen(adc_reading_m));
+
+    		}
+         	//end of ADC reading code
+      /* USER CODE END 2 */
+
+
     /* USER CODE BEGIN 3 */
-  }
+
+	/*
+    //turn on off LED using  serial command
+        if (usb_rx_flag)
+        {
+    		   usb_rx_flag = 0;
+
+    		   if (strncmp((char*)usb_rx_buffer, "eat", 3) == 0)
+    		   {
+    			   //HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
+    			   // String found
+    			   char *reply = "Yes, you said eat\n";
+    			   CDC_Transmit_FS(reply, strlen(reply)); // Send data via USB
+
+    		   }else if(strncmp((char*)usb_rx_buffer, "LED ON", 6) == 0){
+    			   HAL_GPIO_WritePin(GPIOE, GPIO_PIN_13, GPIO_PIN_SET);
+
+    		   }else if(strncmp((char*)usb_rx_buffer, "LED OFF", 7) == 0){
+    			   HAL_GPIO_WritePin(GPIOE, GPIO_PIN_13, GPIO_PIN_RESET);
+    		   }
+        }
+
+        	//Using momentory buttons S1 to toggle LED, reading GPIO
+        if(!HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_10)){
+        		//reading S2 button press event
+        	HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_15);
+        }
+
+
+    if(HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY) == HAL_OK){
+    	adc_value = HAL_ADC_GetValue(&hadc1);
+    }
+
+    HAL_Delay(100);
+    */
+   		//re calling interrupts
+   	//if (HAL_GetTick() - last_adc_time > 100) { // 100 ms
+   	    //HAL_ADC_Start_IT(&hadc1);
+   	    //last_adc_time = HAL_GetTick();
+   	//}
+
   /* USER CODE END 3 */
+  }
+
 }
 
 /**
@@ -234,7 +277,18 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
+/*
+	//ADC callback function
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc){
 
+	if(hadc->Instance == ADC1){
+		adc_value = HAL_ADC_GetValue(hadc);
+		adc_voltage_reading = ((float)adc_value / 4095.0) * 3.3f;
+		HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_15);
+		//HAL_ADC_Start_IT(hadc);
+	}
+}
+*/
 /* USER CODE END 4 */
 
 /**
@@ -248,6 +302,10 @@ void Error_Handler(void)
   __disable_irq();
   while (1)
   {
+	  /* USER CODE BEGIN 5 */
+	  HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_13);
+	  HAL_Delay(1000);
+	  /* USER CODE END 5 */
   }
   /* USER CODE END Error_Handler_Debug */
 }
