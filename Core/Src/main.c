@@ -77,7 +77,7 @@ volatile uint32_t adc_value = 0;
 volatile float adc_voltage_reading = 0;
 volatile long last_adc_time = 0;
 volatile long last_usb_time = 0;
-volatile uint32_t adc_buffer[ADC_BUF_SIZE];
+volatile uint16_t adc_buffer[ADC_BUF_SIZE];
 /* USER CODE END 0 */
 
 /**
@@ -104,7 +104,6 @@ int main(void)
   SystemClock_Config();
 
 
-
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_DMA_Init();
@@ -122,9 +121,10 @@ int main(void)
   MX_SPI2_Init();
   MX_ADC1_Init();
 
-  /* USER CODE BEGIN SysInit */
-   HAL_ADC_Start_DMA(&hadc1, adc_buffer, ADC_BUF_SIZE);
-   /* USER CODE END SysInit */
+  	  /* USER CODE BEGIN SysInit */
+  HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adc_buffer, ADC_BUF_SIZE);
+  	  /* USER CODE END SysInit */
+
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
@@ -133,55 +133,70 @@ int main(void)
     /* USER CODE END WHILE */
     MX_USB_HOST_Process();
 
+
     /* USER CODE BEGIN 2 */
 
-             //test the function of LED Here
-         	//HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_13);
-         	//HAL_Delay(1000);
-         	//HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_14);
-         	//HAL_Delay(1000);
-         	//HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_15);
-         	//HAL_Delay(1000);
+               //test the function of LED Here
+           	//HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_13);
+           	//HAL_Delay(1000);
+           	//HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_14);
+           	//HAL_Delay(1000);
+           	//HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_15);
+           	//HAL_Delay(1000);
 
-         	//Turn LED on and OFF
-         	//this code block print message to Serial port, monitor it from serial
-         	//include this  #include "usbd_cdc_if.h"
-         	//init inside main
-         	//reading ADC A0
+           	//Turn LED on and OFF
+           	//this code block print message to Serial port, monitor it from serial
+           	//include this  #include "usbd_cdc_if.h"
+           	//init inside main
+           	//reading ADC A0
 
-         	//if(HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY) == HAL_OK){
-         		//adc_value = HAL_ADC_GetValue(&hadc1);
-         	//}
+           	//if(HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY) == HAL_OK){
+           		//adc_value = HAL_ADC_GetValue(&hadc1);
+           	//}
 
-         		//This code block reads ADC voltage and print it to serial
-         	/*
-         	HAL_ADC_Start(&hadc1);
+           		//This code block reads ADC voltage and print it to serial
+           	/*
+           	HAL_ADC_Start(&hadc1);
 
-         	if (HAL_ADC_PollForConversion(&hadc1, 200) == HAL_OK)
-         	{
-         		adc_value = HAL_ADC_GetValue(&hadc1);
-         	}
-         	HAL_ADC_Stop(&hadc1);
-         	*/
-    		if ((HAL_GetTick() - last_usb_time) > 1000) {
-				uint16_t sum = 0;
-				last_usb_time = HAL_GetTick();
-				for(int i = 0; i < ADC_BUF_SIZE; i++){
-					sum += adc_buffer[i];
-				}
+           	if (HAL_ADC_PollForConversion(&hadc1, 200) == HAL_OK)
+           	{
+           		adc_value = HAL_ADC_GetValue(&hadc1);
+           	}
+           	HAL_ADC_Stop(&hadc1);
+           	*/
 
-				adc_value = (float)sum / ADC_BUF_SIZE;
-				adc_voltage_reading = ((float)adc_value / 4095.0) * 3.3f;
 
-				char adc_reading_m[50];
-				sprintf(adc_reading_m, "ADC: %0.2f V\r\n", adc_voltage_reading);
-				//sprintf(adc_reading_m, "ADC: %d V\r\n", adc_value);
-				CDC_Transmit_FS((uint8_t*)adc_reading_m, strlen(adc_reading_m));
 
-    		}
-         	//end of ADC reading code
-      /* USER CODE END 2 */
 
+      		if ((HAL_GetTick() - last_usb_time) > 1000) {
+      			int32_t sum_A0 = 0;
+				int32_t sum_A4 = 0;
+				uint16_t count = ADC_BUF_SIZE / 2;
+  				uint16_t sum = 0;
+  				last_usb_time = HAL_GetTick();
+
+  				for(int i = 0; i < ADC_BUF_SIZE; i+=2){
+  					sum_A0 += adc_buffer[i]; //Sum of A0
+  					sum_A4 += adc_buffer[i+1]; //Sum of A4
+  				}
+
+  				uint32_t adc_A0 = sum_A0 / count;
+  				uint32_t adc_A4 = sum_A4 / count;
+
+  				float voltage_A0 = ((float)adc_A0 / 4095.0) * 3.3f;
+  				float voltage_A4 = ((float)adc_A4 / 4095.0) * 3.3f;
+
+
+
+  				char adc_reading_m[50];
+  				sprintf(adc_reading_m, "ADC A0: %0.2f V\r\n", voltage_A0);
+  				CDC_Transmit_FS((uint8_t*)adc_reading_m, strlen(adc_reading_m));
+  				sprintf(adc_reading_m, "ADC A4: %0.2f V\r\n", voltage_A4);
+  				CDC_Transmit_FS((uint8_t*)adc_reading_m, strlen(adc_reading_m));
+
+      		}
+           	//end of ADC reading code
+    /* USER CODE END 2 */
 
     /* USER CODE BEGIN 3 */
 
@@ -227,7 +242,6 @@ int main(void)
 
   /* USER CODE END 3 */
   }
-
 }
 
 /**

@@ -74,8 +74,6 @@ void Error_Handler(void);
 #define P4_GPIOC0_GPIO_Port GPIOC
 #define P4_GPIOA3_Pin GPIO_PIN_3
 #define P4_GPIOA3_GPIO_Port GPIOA
-#define P4_GPIOA4_Pin GPIO_PIN_4
-#define P4_GPIOA4_GPIO_Port GPIOA
 #define P4_GPIOA5_Pin GPIO_PIN_5
 #define P4_GPIOA5_GPIO_Port GPIOA
 #define P4_GPIOA6_Pin GPIO_PIN_6
