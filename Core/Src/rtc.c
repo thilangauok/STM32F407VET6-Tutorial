@@ -31,6 +31,14 @@ void MX_RTC_Init(void)
 {
 
   /* USER CODE BEGIN RTC_Init 0 */
+	//structure to hold time and date values
+	RTC_TimeTypeDef sTime = {0};
+	RTC_DateTypeDef sDate = {0};
+
+  //Enable Power interface clock required for backup domain access
+	__HAL_RCC_PWR_CLK_ENABLE();
+
+	//write access to RTC backup domain (RTC + backup register)
 
   /* USER CODE END RTC_Init 0 */
 
@@ -47,12 +55,27 @@ void MX_RTC_Init(void)
   hrtc.Init.OutPut = RTC_OUTPUT_DISABLE;
   hrtc.Init.OutPutPolarity = RTC_OUTPUT_POLARITY_HIGH;
   hrtc.Init.OutPutType = RTC_OUTPUT_TYPE_OPENDRAIN;
+
   if (HAL_RTC_Init(&hrtc) != HAL_OK)
   {
     Error_Handler();
   }
   /* USER CODE BEGIN RTC_Init 2 */
+  	  //setting initial time
+  sTime.Hours = 12;
+  sTime.Minutes = 0;
+  sTime.Seconds = 0;
 
+  //Write time to RTC(binary format not BCD)
+  HAL_RTC_SetTime(&hrtc, &sTime, RTC_FORMAT_BIN);
+
+  //set initial date
+  sDate.WeekDay = RTC_WEEKDAY_TUESDAY;
+  sDate.Month = RTC_MONTH_MARCH;
+  sDate.Date = 24;
+  sDate.Year = 26;
+
+  HAL_RTC_SetDate(&hrtc, &sDate, RTC_FORMAT_BIN);
   /* USER CODE END RTC_Init 2 */
 
 }

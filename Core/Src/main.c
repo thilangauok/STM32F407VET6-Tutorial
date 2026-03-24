@@ -77,6 +77,7 @@ volatile uint32_t adc_value = 0;
 volatile float adc_voltage_reading = 0;
 volatile long last_adc_time = 0;
 volatile long last_usb_time = 0;
+volatile long last_clock_time = 0;
 volatile uint16_t adc_buffer[ADC_BUF_SIZE];
 /* USER CODE END 0 */
 
@@ -165,9 +166,6 @@ int main(void)
            	HAL_ADC_Stop(&hadc1);
            	*/
 
-
-
-
       		if ((HAL_GetTick() - last_usb_time) > 1000) {
       			int32_t sum_A0 = 0;
 				int32_t sum_A4 = 0;
@@ -199,6 +197,30 @@ int main(void)
     /* USER CODE END 2 */
 
     /* USER CODE BEGIN 3 */
+
+   //Display the time
+   if ((HAL_GetTick() - last_clock_time) > 5000) {
+	   RTC_TimeTypeDef gTime;
+	   RTC_DateTypeDef gDate;
+	   last_clock_time = HAL_GetTick();
+
+	   HAL_RTC_GetTime(&hrtc, &gTime, RTC_FORMAT_BIN);
+	   HAL_RTC_GetDate(&hrtc, &gDate, RTC_FORMAT_BIN);
+
+	   char rtc_msg[64];
+
+	   sprintf(rtc_msg,
+			   "Time: %02d:%02d:%02d Date %02d-%02d-20%02d\r\n",
+			   gTime.Hours,
+			   gTime.Minutes,
+			   gTime.Seconds,
+			   gDate.Date,
+			   gDate.Month,
+			   gDate.Year);
+
+	   CDC_Transmit_FS((uint8_t*)rtc_msg, strlen(rtc_msg));
+
+   }
 
 	/*
     //turn on off LED using  serial command
