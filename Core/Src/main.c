@@ -36,6 +36,7 @@
 /* USER CODE BEGIN Includes */
 #include "string.h"
 #include "usbd_cdc_if.h"
+#include <25Q64FVSIG.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -57,7 +58,15 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
+CAN_TxHeaderTypeDef TxHeader;
+uint8_t TxData[8];
+uint32_t TxMailBox;
 
+CAN_RxHeaderTypeDef RxHeader1;
+uint8_t RxData1[8];
+
+CAN_RxHeaderTypeDef RxHeader2;
+uint8_t RxData2[8];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -78,6 +87,7 @@ volatile float adc_voltage_reading = 0;
 volatile long last_adc_time = 0;
 volatile long last_usb_time = 0;
 volatile long last_clock_time = 0;
+static uint32_t last_can_time = 0;
 volatile uint16_t adc_buffer[ADC_BUF_SIZE];
 /* USER CODE END 0 */
 
@@ -124,6 +134,29 @@ int main(void)
 
   	  /* USER CODE BEGIN SysInit */
   HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adc_buffer, ADC_BUF_SIZE);
+  HAL_CAN_Start(&hcan1);
+  HAL_CAN_Start(&hcan2);
+
+  HAL_CAN_ActivateNotification(&hcan1, CAN_IT_RX_FIFO0_MSG_PENDING);
+  HAL_CAN_ActivateNotification(&hcan2, CAN_IT_RX_FIFO0_MSG_PENDING);
+
+  	  //configure TX Message
+  TxHeader.StdId = 0xAAA;
+  TxHeader.RTR = CAN_RTR_DATA;
+  TxHeader.IDE = CAN_ID_STD;
+  TxHeader.DLC = 8;
+  TxHeader.TransmitGlobalTime = DISABLE;
+
+  	  //init data
+  TxData[0] = 0xAA;
+  TxData[1] = 0xAA;
+  TxData[2] = 0xAA;
+  TxData[3] = 0xAA;
+  TxData[4] = 0x11;
+  TxData[5] = 0xAA;
+  TxData[6] = 0xAA;
+  TxData[7] = 0xAA;
+
   	  /* USER CODE END SysInit */
 
 
@@ -136,6 +169,12 @@ int main(void)
 
 
     /* USER CODE BEGIN 2 */
+    if (HAL_GetTick() - last_can_time > 500) // every 500 ms
+    {
+        last_can_time = HAL_GetTick();
+    	//Sending CAN Message
+        HAL_CAN_AddTxMessage(&hcan1, &TxHeader, TxData, &TxMailBox);
+    }
 
                //test the function of LED Here
            	//HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_13);
@@ -220,7 +259,16 @@ int main(void)
 
 	   CDC_Transmit_FS((uint8_t*)rtc_msg, strlen(rtc_msg));
 
+	   uint8_t flash_id;
+	   Flash_ReadID(&flash_id);
+
+	   char flash_text[50];
+	   sprintf(flash_text, "The flash ID is: 0x%02X\r\n", (uint8_t)flash_id);
+	   CDC_Transmit_FS((uint8_t*)flash_text, strlen(flash_text));
+
    }
+
+
 
 	/*
     //turn on off LED using  serial command
@@ -313,6 +361,19 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
+void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan){
+
+	if(hcan->Instance == CAN1){
+		HAL_CAN_GetRxMessage(hcan, CAN_RX_FIFO0, &RxHeader1, RxData1);
+	}else if(hcan->Instance == CAN2){
+		HAL_CAN_GetRxMessage(hcan, CAN_RX_FIFO0, &RxHeader2, RxData2);
+		if(RxHeader2.StdId == 0x321){
+			char can_message[50];
+			sprintf(can_message, "\nCan message received\r\n");
+			CDC_Transmit_FS((uint8_t*)can_message, strlen(can_message));
+		}
+	}
+}
 /*
 	//ADC callback function
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc){
@@ -324,6 +385,9 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc){
 		//HAL_ADC_Start_IT(hadc);
 	}
 }
+
+
+
 */
 /* USER CODE END 4 */
 

@@ -1,0 +1,6 @@
+../Core/Src/25Q64FVSIG.c:10:9:SPI_Transfer	1
+../Core/Src/25Q64FVSIG.c:16:6:Flash_WriteEnable	1
+../Core/Src/25Q64FVSIG.c:23:9:Flash_ReadStatus	1
+../Core/Src/25Q64FVSIG.c:32:6:Flash_ReadID	1
+../Core/Src/25Q64FVSIG.c:40:6:Flash_ReadData	1
+../Core/Src/25Q64FVSIG.c:52:6:Flash_PageProgram	2

@@ -1,3 +1,4 @@
+"./Core/Src/25Q64FVSIG.o"
 "./Core/Src/adc.o"
 "./Core/Src/can.o"
 "./Core/Src/crc.o"
