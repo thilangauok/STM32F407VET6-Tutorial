@@ -37,6 +37,9 @@
 #include "string.h"
 #include "usbd_cdc_if.h"
 #include <25Q64FVSIG.h>
+/**
+ * ST32407 test code for ethernet transceiver DP83848
+ */
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -72,7 +75,7 @@ uint8_t RxData2[8];
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 void MX_USB_HOST_Process(void);
-
+void try_flash_25Q64FVSIG();
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -131,6 +134,7 @@ int main(void)
   MX_USB_HOST_Init();
   MX_SPI2_Init();
   MX_ADC1_Init();
+  //MX_ETH_Init();
 
   	  /* USER CODE BEGIN SysInit */
   HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adc_buffer, ADC_BUF_SIZE);
@@ -205,7 +209,7 @@ int main(void)
            	HAL_ADC_Stop(&hadc1);
            	*/
 
-      		if ((HAL_GetTick() - last_usb_time) > 1000) {
+      		if ((HAL_GetTick() - last_usb_time) > 10000) {
       			int32_t sum_A0 = 0;
 				int32_t sum_A4 = 0;
 				uint16_t count = ADC_BUF_SIZE / 2;
@@ -259,12 +263,13 @@ int main(void)
 
 	   CDC_Transmit_FS((uint8_t*)rtc_msg, strlen(rtc_msg));
 
-	   uint8_t flash_id;
-	   Flash_ReadID(&flash_id);
+	   //uint8_t flash_id;
+	   //Flash_ReadID(&flash_id);
 
-	   char flash_text[50];
-	   sprintf(flash_text, "The flash ID is: 0x%02X\r\n", (uint8_t)flash_id);
-	   CDC_Transmit_FS((uint8_t*)flash_text, strlen(flash_text));
+	   //char flash_text[50];
+	   //sprintf(flash_text, "The flash ID is: 0x%02X\r\n", (uint8_t)flash_id);
+	   //CDC_Transmit_FS((uint8_t*)flash_text, strlen(flash_text));
+	   try_flash_25Q64FVSIG();
 
    }
 
@@ -373,6 +378,41 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan){
 			CDC_Transmit_FS((uint8_t*)can_message, strlen(can_message));
 		}
 	}
+}
+
+	//this function is here for us to test onboard flash functionality
+void try_flash_25Q64FVSIG(){
+		//reading ID
+	char flash_text[50];
+	uint8_t id[3];
+	Flash_ReadID(id);
+
+	sprintf(flash_text, "The Flash ID: %02X %02X %02X\r\n", id[0], id[1], id[2]);
+	//CDC_Transmit_FS((uint8_t*)flash_text, strlen(flash_text));
+	while(CDC_Transmit_FS((uint8_t*)flash_text, strlen(flash_text)) == USBD_BUSY);
+
+	uint8_t writeData[16] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
+	Flash_WriteEnable();
+	Flash_SectorErase(0x000000);
+	while(Flash_ReadStatus() & 0x01);
+
+	HAL_Delay(1);
+
+		//programming data
+	Flash_PageProgram(0x000000, writeData, 16);
+
+
+	uint8_t readData[16];
+	Flash_ReadData(0x000000, readData, 16);
+
+
+		//printing the content we read
+	for(int i=0; i < 16; i +=4){
+		sprintf(flash_text, "%02X %02X %02X %02X\r\n", readData[i], readData[i+1], readData[i+2], readData[i+3]);
+		//CDC_Transmit_FS((uint8_t*)flash_text, strlen(flash_text));
+		while(CDC_Transmit_FS((uint8_t*)flash_text, strlen(flash_text)) == USBD_BUSY);
+	}
+
 }
 /*
 	//ADC callback function

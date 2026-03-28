@@ -4,3 +4,4 @@
 ../Core/Src/25Q64FVSIG.c:32:6:Flash_ReadID	1
 ../Core/Src/25Q64FVSIG.c:40:6:Flash_ReadData	1
 ../Core/Src/25Q64FVSIG.c:52:6:Flash_PageProgram	2
+../Core/Src/25Q64FVSIG.c:68:6:Flash_SectorErase	2
