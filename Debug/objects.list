@@ -6,6 +6,8 @@
 "./Core/Src/dma.o"
 "./Core/Src/gpio.o"
 "./Core/Src/main.o"
+"./Core/Src/mcp251863.o"
+"./Core/Src/rs485.o"
 "./Core/Src/rtc.o"
 "./Core/Src/sdio.o"
 "./Core/Src/spi.o"

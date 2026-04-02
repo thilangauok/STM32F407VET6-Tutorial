@@ -1,0 +1,4 @@
+../Core/Src/rs485.c:12:6:RS485_SetTransmitMode	1
+../Core/Src/rs485.c:17:6:RS485_SetReceiveMode	1
+../Core/Src/rs485.c:21:6:RS485_Send	2
+../Core/Src/rs485.c:36:6:RS485_Receive	2

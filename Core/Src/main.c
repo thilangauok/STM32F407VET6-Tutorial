@@ -36,7 +36,8 @@
 /* USER CODE BEGIN Includes */
 #include "string.h"
 #include "usbd_cdc_if.h"
-#include <25Q64FVSIG.h>
+#include "25Q64FVSIG.h"
+#include "RS485.h"
 /**
  * ST32407 test code for ethernet transceiver DP83848
  */
@@ -76,6 +77,7 @@ uint8_t RxData2[8];
 void SystemClock_Config(void);
 void MX_USB_HOST_Process(void);
 void try_flash_25Q64FVSIG();
+void testing_RS485();
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -91,6 +93,7 @@ volatile long last_adc_time = 0;
 volatile long last_usb_time = 0;
 volatile long last_clock_time = 0;
 static uint32_t last_can_time = 0;
+static uint32_t last_rs485_time = 0;
 volatile uint16_t adc_buffer[ADC_BUF_SIZE];
 /* USER CODE END 0 */
 
@@ -271,9 +274,10 @@ int main(void)
 	   //CDC_Transmit_FS((uint8_t*)flash_text, strlen(flash_text));
 	   try_flash_25Q64FVSIG();
 
+
    }
 
-
+   testing_RS485();
 
 	/*
     //turn on off LED using  serial command
@@ -380,7 +384,7 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan){
 	}
 }
 
-	//this function is here for us to test onboard flash functionality
+	//this function is here for us to test 25Q64FV on-board flash functionality, fully working code
 void try_flash_25Q64FVSIG(){
 		//reading ID
 	char flash_text[50];
@@ -388,7 +392,7 @@ void try_flash_25Q64FVSIG(){
 	Flash_ReadID(id);
 
 	sprintf(flash_text, "The Flash ID: %02X %02X %02X\r\n", id[0], id[1], id[2]);
-	//CDC_Transmit_FS((uint8_t*)flash_text, strlen(flash_text));
+		//USB none blocking
 	while(CDC_Transmit_FS((uint8_t*)flash_text, strlen(flash_text)) == USBD_BUSY);
 
 	uint8_t writeData[16] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
@@ -401,7 +405,7 @@ void try_flash_25Q64FVSIG(){
 		//programming data
 	Flash_PageProgram(0x000000, writeData, 16);
 
-
+		//reading data to buffer
 	uint8_t readData[16];
 	Flash_ReadData(0x000000, readData, 16);
 
@@ -409,10 +413,12 @@ void try_flash_25Q64FVSIG(){
 		//printing the content we read
 	for(int i=0; i < 16; i +=4){
 		sprintf(flash_text, "%02X %02X %02X %02X\r\n", readData[i], readData[i+1], readData[i+2], readData[i+3]);
-		//CDC_Transmit_FS((uint8_t*)flash_text, strlen(flash_text));
+			//avoid blocking of USB
 		while(CDC_Transmit_FS((uint8_t*)flash_text, strlen(flash_text)) == USBD_BUSY);
 	}
 
+	  //next step for FLASH file Writing
+		   //circular data logger for your ADC + timestamp
 }
 /*
 	//ADC callback function
@@ -426,9 +432,42 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc){
 	}
 }
 
-
-
 */
+
+void testing_RS485(){
+	uint8_t tx_data[] = "Hello RS485\r\n";
+
+	if ((HAL_GetTick() - last_rs485_time) > 5000){
+
+		last_rs485_time = HAL_GetTick();
+
+			//sending RS485 data
+		RS485_Send(tx_data, sizeof(tx_data) - 1);
+			//adding slight delay
+		HAL_Delay(100);
+
+			//Receiving RS485 data
+		RS485_Receive();
+
+			//monitoring on the USB
+		CDC_Transmit_FS(rs_485_rx_buffer, strlen((char*)rs_485_rx_buffer));
+
+			//adding slight delay
+		HAL_Delay(100);
+	}
+}
+
+
+//Pin interrupt call back function
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+    if(GPIO_Pin == GPIO_PIN_5)
+    {
+        // Read interrupt flags
+    }
+}
+
+
 /* USER CODE END 4 */
 
 /**

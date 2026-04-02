@@ -1,0 +1,8 @@
+../Core/Src/mcp251863.c:12:13:MCP_Select	8	static
+../Core/Src/mcp251863.c:17:13:MCP_Unselect	8	static
+../Core/Src/mcp251863.c:21:6:MCP251863_Reset	16	static
+../Core/Src/mcp251863.c:35:6:MCP251863_WriteReg	24	static
+../Core/Src/mcp251863.c:52:9:MCP251863_SetMode	24	static
+../Core/Src/mcp251863.c:79:10:MCP251863_ReadReg	40	static
+../Core/Src/mcp251863.c:97:6:MCP251863_Init	8	static
+../Core/Src/mcp251863.c:127:6:MCP251863_SendTestFrame	24	static
