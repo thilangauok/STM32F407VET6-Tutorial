@@ -38,6 +38,8 @@
 #include "usbd_cdc_if.h"
 #include "25Q64FVSIG.h"
 #include "RS485.h"
+#include "fatfs.h"
+#include "stdio.h"
 /**
  * ST32407 test code for ethernet transceiver DP83848
  */
@@ -71,13 +73,26 @@ uint8_t RxData1[8];
 
 CAN_RxHeaderTypeDef RxHeader2;
 uint8_t RxData2[8];
+
+//SDIO file access
+FATFS fs;
+FIL fil;
+FRESULT res;
+UINT bytes_written, bytes_read;
+
+char write_buf[] = "Hello from STM32 SDIO!\r\n";
+char read_buf[100];
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 void MX_USB_HOST_Process(void);
-void try_flash_25Q64FVSIG();
+void SDIO_SD_Read();
+void SDIO_SD_Write();
+uint8_t CDC_Transmit_FS(uint8_t* Buf, uint16_t Len);
 void testing_RS485();
+void try_flash_25Q64FVSIG();
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -110,8 +125,25 @@ int main(void)
 
   /* MCU Configuration--------------------------------------------------------*/
 
-  /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-  HAL_Init();
+  /* Initialize all configured peripherals */
+   MX_GPIO_Init();
+   MX_DMA_Init();
+   MX_CAN1_Init();
+   MX_CAN2_Init();
+   MX_RTC_Init();
+   MX_SDIO_SD_Init();
+   MX_USART1_UART_Init();
+   MX_USART2_UART_Init();
+   MX_LWIP_Init();
+   MX_USB_DEVICE_Init();
+   MX_FATFS_Init();
+   MX_CRC_Init();
+   MX_USB_HOST_Init();
+   MX_SPI2_Init();
+   MX_ADC1_Init();
+
+   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
+   HAL_Init();
 
   /* USER CODE BEGIN Init */
 
@@ -120,26 +152,7 @@ int main(void)
   /* Configure the system clock */
   SystemClock_Config();
 
-
-  /* Initialize all configured peripherals */
-  MX_GPIO_Init();
-  MX_DMA_Init();
-  MX_CAN1_Init();
-  MX_CAN2_Init();
-  MX_RTC_Init();
-  MX_SDIO_SD_Init();
-  MX_USART1_UART_Init();
-  MX_USART2_UART_Init();
-  MX_LWIP_Init();
-  MX_USB_DEVICE_Init();
-  MX_FATFS_Init();
-  MX_CRC_Init();
-  MX_USB_HOST_Init();
-  MX_SPI2_Init();
-  MX_ADC1_Init();
-  //MX_ETH_Init();
-
-  	  /* USER CODE BEGIN SysInit */
+  /* USER CODE BEGIN SysInit */
   HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adc_buffer, ADC_BUF_SIZE);
   HAL_CAN_Start(&hcan1);
   HAL_CAN_Start(&hcan2);
@@ -164,7 +177,8 @@ int main(void)
   TxData[6] = 0xAA;
   TxData[7] = 0xAA;
 
-  	  /* USER CODE END SysInit */
+  /* USER CODE END SysInit */
+
 
 
   /* Infinite loop */
@@ -174,75 +188,71 @@ int main(void)
     /* USER CODE END WHILE */
     MX_USB_HOST_Process();
 
-
-    /* USER CODE BEGIN 2 */
-    if (HAL_GetTick() - last_can_time > 500) // every 500 ms
-    {
-        last_can_time = HAL_GetTick();
-    	//Sending CAN Message
-        HAL_CAN_AddTxMessage(&hcan1, &TxHeader, TxData, &TxMailBox);
-    }
-
-               //test the function of LED Here
-           	//HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_13);
-           	//HAL_Delay(1000);
-           	//HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_14);
-           	//HAL_Delay(1000);
-           	//HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_15);
-           	//HAL_Delay(1000);
-
-           	//Turn LED on and OFF
-           	//this code block print message to Serial port, monitor it from serial
-           	//include this  #include "usbd_cdc_if.h"
-           	//init inside main
-           	//reading ADC A0
-
-           	//if(HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY) == HAL_OK){
-           		//adc_value = HAL_ADC_GetValue(&hadc1);
-           	//}
-
-           		//This code block reads ADC voltage and print it to serial
-           	/*
-           	HAL_ADC_Start(&hadc1);
-
-           	if (HAL_ADC_PollForConversion(&hadc1, 200) == HAL_OK)
-           	{
-           		adc_value = HAL_ADC_GetValue(&hadc1);
-           	}
-           	HAL_ADC_Stop(&hadc1);
-           	*/
-
-      		if ((HAL_GetTick() - last_usb_time) > 10000) {
-      			int32_t sum_A0 = 0;
-				int32_t sum_A4 = 0;
-				uint16_t count = ADC_BUF_SIZE / 2;
-  				uint16_t sum = 0;
-  				last_usb_time = HAL_GetTick();
-
-  				for(int i = 0; i < ADC_BUF_SIZE; i+=2){
-  					sum_A0 += adc_buffer[i]; //Sum of A0
-  					sum_A4 += adc_buffer[i+1]; //Sum of A4
-  				}
-
-  				uint32_t adc_A0 = sum_A0 / count;
-  				uint32_t adc_A4 = sum_A4 / count;
-
-  				float voltage_A0 = ((float)adc_A0 / 4095.0) * 3.3f;
-  				float voltage_A4 = ((float)adc_A4 / 4095.0) * 3.3f;
-
-
-
-  				char adc_reading_m[50];
-  				sprintf(adc_reading_m, "ADC A0: %0.2f V\r\n", voltage_A0);
-  				CDC_Transmit_FS((uint8_t*)adc_reading_m, strlen(adc_reading_m));
-  				sprintf(adc_reading_m, "ADC A4: %0.2f V\r\n", voltage_A4);
-  				CDC_Transmit_FS((uint8_t*)adc_reading_m, strlen(adc_reading_m));
-
-      		}
-           	//end of ADC reading code
-    /* USER CODE END 2 */
-
     /* USER CODE BEGIN 3 */
+
+      if (HAL_GetTick() - last_can_time > 500) // every 500 ms
+      {
+          last_can_time = HAL_GetTick();
+      	//Sending CAN Message
+          HAL_CAN_AddTxMessage(&hcan1, &TxHeader, TxData, &TxMailBox);
+      }
+
+                 //test the function of LED Here
+             	//HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_13);
+             	//HAL_Delay(1000);
+             	//HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_14);
+             	//HAL_Delay(1000);
+             	//HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_15);
+             	//HAL_Delay(1000);
+
+             	//Turn LED on and OFF
+             	//this code block print message to Serial port, monitor it from serial
+             	//include this  #include "usbd_cdc_if.h"
+             	//init inside main
+             	//reading ADC A0
+
+             	//if(HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY) == HAL_OK){
+             		//adc_value = HAL_ADC_GetValue(&hadc1);
+             	//}
+
+             		//This code block reads ADC voltage and print it to serial
+             	/*
+             	HAL_ADC_Start(&hadc1);
+
+             	if (HAL_ADC_PollForConversion(&hadc1, 200) == HAL_OK)
+             	{
+             		adc_value = HAL_ADC_GetValue(&hadc1);
+             	}
+             	HAL_ADC_Stop(&hadc1);
+             	*/
+
+        		if ((HAL_GetTick() - last_usb_time) > 10000) {
+        			int32_t sum_A0 = 0;
+  				int32_t sum_A4 = 0;
+  				uint16_t count = ADC_BUF_SIZE / 2;
+    				uint16_t sum = 0;
+    				last_usb_time = HAL_GetTick();
+
+    				for(int i = 0; i < ADC_BUF_SIZE; i+=2){
+    					sum_A0 += adc_buffer[i]; //Sum of A0
+    					sum_A4 += adc_buffer[i+1]; //Sum of A4
+    				}
+
+    				uint32_t adc_A0 = sum_A0 / count;
+    				uint32_t adc_A4 = sum_A4 / count;
+
+    				float voltage_A0 = ((float)adc_A0 / 4095.0) * 3.3f;
+    				float voltage_A4 = ((float)adc_A4 / 4095.0) * 3.3f;
+
+
+
+    				char adc_reading_m[50];
+    				sprintf(adc_reading_m, "ADC A0: %0.2f V\r\n", voltage_A0);
+    				CDC_Transmit_FS((uint8_t*)adc_reading_m, strlen(adc_reading_m));
+    				sprintf(adc_reading_m, "ADC A4: %0.2f V\r\n", voltage_A4);
+    				CDC_Transmit_FS((uint8_t*)adc_reading_m, strlen(adc_reading_m));
+
+        		}
 
    //Display the time
    if ((HAL_GetTick() - last_clock_time) > 5000) {
@@ -457,6 +467,39 @@ void testing_RS485(){
 	}
 }
 
+	//testing SDIO SD card write
+void SDIO_SD_Write(){
+	// Mount filesystem
+	res = f_mount(&fs, "", 1);
+	if (res != FR_OK) {
+	    printf("Mount failed\n");
+	}
+
+	// Open or create file
+	res = f_open(&fil, "test.txt", FA_CREATE_ALWAYS | FA_WRITE);
+	if (res == FR_OK) {
+	    f_write(&fil, write_buf, strlen(write_buf), &bytes_written);
+	    f_close(&fil);
+	    printf("Write OK: %d bytes\n", bytes_written);
+	} else {
+	    printf("File open failed\n");
+	}
+}
+
+
+	//testing SDIO SD read function
+void SDIO_SD_Read(){
+	res = f_open(&fil, "test.txt", FA_READ);
+	if (res == FR_OK) {
+	    f_read(&fil, read_buf, sizeof(read_buf), &bytes_read);
+	    f_close(&fil);
+
+	    read_buf[bytes_read] = '\0'; // null-terminate
+	    printf("Read: %s\n", read_buf);
+	} else {
+	    printf("Read open failed\n");
+	}
+}
 
 //Pin interrupt call back function
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
@@ -479,6 +522,7 @@ void Error_Handler(void)
   /* USER CODE BEGIN Error_Handler_Debug */
   /* User can add his own implementation to report the HAL error return state */
   __disable_irq();
+
   while (1)
   {
 	  /* USER CODE BEGIN 5 */
@@ -488,6 +532,8 @@ void Error_Handler(void)
   }
   /* USER CODE END Error_Handler_Debug */
 }
+
+
 #ifdef USE_FULL_ASSERT
 /**
   * @brief  Reports the name of the source file and the source line number

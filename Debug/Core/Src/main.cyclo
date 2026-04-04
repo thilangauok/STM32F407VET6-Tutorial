@@ -1,7 +1,9 @@
-../Core/Src/main.c:104:5:main	5
-../Core/Src/main.c:330:6:SystemClock_Config	3
-../Core/Src/main.c:373:6:HAL_CAN_RxFifo0MsgPendingCallback	4
-../Core/Src/main.c:388:6:try_flash_25Q64FVSIG	5
-../Core/Src/main.c:437:6:testing_RS485	2
-../Core/Src/main.c:462:6:HAL_GPIO_EXTI_Callback	1
-../Core/Src/main.c:477:6:Error_Handler	1
+../Core/Src/main.c:119:5:main	5
+../Core/Src/main.c:340:6:SystemClock_Config	3
+../Core/Src/main.c:383:6:HAL_CAN_RxFifo0MsgPendingCallback	4
+../Core/Src/main.c:398:6:try_flash_25Q64FVSIG	5
+../Core/Src/main.c:447:6:testing_RS485	2
+../Core/Src/main.c:471:6:SDIO_SD_Write	3
+../Core/Src/main.c:491:6:SDIO_SD_Read	2
+../Core/Src/main.c:505:6:HAL_GPIO_EXTI_Callback	1
+../Core/Src/main.c:520:6:Error_Handler	1
